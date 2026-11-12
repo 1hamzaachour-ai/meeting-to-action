@@ -13,7 +13,7 @@ Built for meetings held in **Tunisian Derja, French and English at the same time
 ![FastAPI](https://img.shields.io/badge/FastAPI-async%20API-009688?logo=fastapi&logoColor=white)
 ![Pydantic](https://img.shields.io/badge/Pydantic-v2-E92063?logo=pydantic&logoColor=white)
 ![Claude](https://img.shields.io/badge/Claude-Structured%20Outputs-D97757?logo=anthropic&logoColor=white)
-![OpenAI](https://img.shields.io/badge/OpenAI-speech--to--text-412991?logo=openai&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI-speech--to--text-412991)
 ![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Whisper%20fine--tune-FFD21E?logo=huggingface&logoColor=black)
 ![Notion](https://img.shields.io/badge/Notion-API-000000?logo=notion&logoColor=white)
 ![Zoom](https://img.shields.io/badge/Zoom-webhooks-0B5CFF?logo=zoom&logoColor=white)

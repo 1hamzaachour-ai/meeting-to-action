@@ -46,7 +46,13 @@ class Settings(BaseSettings):
     # How many jobs are kept for status polling before the oldest finished ones are dropped.
     max_jobs_in_memory: int = Field(default=500, gt=0)
 
-    # --- LLM (Anthropic) ---
+    # --- LLM ---
+    # "anthropic": Claude (billed). "groq": an open-weight model on Groq, which has a free plan.
+    llm_provider: Literal["anthropic", "groq"] = "anthropic"
+    groq_api_key: SecretStr | None = None
+    groq_model: str = "openai/gpt-oss-120b"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+    groq_reasoning_effort: Literal["low", "medium", "high"] = "medium"
     anthropic_api_key: SecretStr | None = None
     anthropic_base_url: str | None = None  # only for a proxy or gateway
     llm_model: str = "claude-opus-5-5"
@@ -124,7 +130,8 @@ class Settings(BaseSettings):
 
     @property
     def llm_configured(self) -> bool:
-        return self.anthropic_api_key is not None
+        key = self.groq_api_key if self.llm_provider == "groq" else self.anthropic_api_key
+        return key is not None
 
     @property
     def stt_configured(self) -> bool:

@@ -27,6 +27,8 @@ ISOLATED_SETTINGS = {
     "max_upload_bytes": 2_000,
     "api_key": None,
     "anthropic_api_key": None,
+    "groq_api_key": None,
+    "llm_provider": "anthropic",
     "openai_api_key": None,
     "stt_provider": "openai",
     "task_language": None,

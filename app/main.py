@@ -17,6 +17,7 @@ from app.config import Settings
 from app.logging_config import configure_logging
 from app.middleware import MaxBodySizeMiddleware
 from app.services.extraction import ActionItemExtractor
+from app.services.groq_extractor import GroqExtractor
 from app.services.job_store import InMemoryJobStore
 from app.services.local_whisper import LocalWhisperTranscriber, missing_packages
 from app.services.notion import NotionError, NotionTaskWriter
@@ -50,17 +51,30 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         """Create the long-lived objects once at startup, and close them at shutdown."""
-        active_extractor = extractor
-        if active_extractor is None and settings.anthropic_api_key is not None:
-            # Imported here rather than at the top of the file: the Anthropic SDK
-            # takes seconds to load, a cost worth paying only when it is used.
-            from app.services.anthropic_extractor import AnthropicExtractor
-
-            active_extractor = AnthropicExtractor.from_settings(settings)
-
-        # One HTTP client, with its connection pool, shared by the Notion, Zoom and
-        # speech-to-text calls.
+        # One HTTP client, with its connection pool, shared by the LLM (Groq), Notion,
+        # Zoom and speech-to-text calls.
         http = httpx2.AsyncClient(timeout=httpx2.Timeout(30.0, connect=10.0), transport=http_transport)
+
+        active_extractor = extractor
+        if active_extractor is None and settings.llm_configured:
+            if settings.llm_provider == "groq":
+                assert settings.groq_api_key is not None
+                active_extractor = GroqExtractor(
+                    http,
+                    api_key=settings.groq_api_key.get_secret_value(),
+                    model=settings.groq_model,
+                    base_url=settings.groq_base_url,
+                    reasoning_effort=settings.groq_reasoning_effort,
+                    max_tokens=settings.llm_max_tokens,
+                    timeout_seconds=settings.llm_timeout_seconds,
+                    task_language=settings.task_language,
+                )
+            else:
+                # Imported here rather than at the top of the file: the Anthropic SDK
+                # takes seconds to load, a cost worth paying only when it is used.
+                from app.services.anthropic_extractor import AnthropicExtractor
+
+                active_extractor = AnthropicExtractor.from_settings(settings)
 
         active_transcriber = transcriber
         if active_transcriber is None and settings.stt_provider == "local":

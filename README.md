@@ -57,7 +57,7 @@ flowchart TD
 
     subgraph PIPELINE["Background task"]
         STT["Speech-to-text<br/>gpt-transcribe, or a local Whisper fine-tune"]
-        LLM["Claude with Structured Outputs<br/>JSON constrained to a Pydantic schema"]
+        LLM["LLM with Structured Outputs<br/>Claude, or an open model on Groq<br/>JSON constrained to a Pydantic schema"]
         CHECK["Quote check<br/>each task must quote the transcript"]
         NOTION["Notion API<br/>one page per task"]
         STT --> LLM --> CHECK --> NOTION
@@ -71,7 +71,7 @@ flowchart TD
 | --- | --- |
 | **1. Ingest** | The file is validated (type, size, real content) and a job is registered. The server answers `202 Accepted` in milliseconds; the slow work never blocks a request. |
 | **2. Transcribe** | Recordings go through a speech engine that is told which languages to expect and how the participants' names are spelled. |
-| **3. Extract** | Claude returns a summary and the action items as JSON. The reply is constrained to a schema generated from a Pydantic model, so it always parses. |
+| **3. Extract** | The LLM (Claude, or an open-weight model on Groq) returns a summary and the action items as JSON. The reply is constrained to a schema generated from a Pydantic model, so it always parses. |
 | **4. Verify** | Every task must quote the transcript. The quote is checked character by character; a task whose quote is not there is flagged for review instead of trusted. |
 | **5. File** | Each task becomes a Notion page: title, owner, due date, priority, with the context and the quote in the page body. |
 
@@ -115,7 +115,7 @@ ranking. What this project does about it:
 | --- | --- | --- |
 | API | **FastAPI** + Uvicorn | Async, `BackgroundTasks` for "answer now, work later", OpenAPI docs for free |
 | Contracts | **Pydantic v2** | One model is the validation rule, the JSON schema sent to the LLM, and the API docs |
-| LLM | **Claude** (Anthropic API), Structured Outputs | The reply is constrained to the schema; reads Derja, French and English in one pass |
+| LLM | **Claude** (Anthropic API) or **gpt-oss-120b on Groq**, Structured Outputs | Either way the reply is constrained to the schema. Claude is the default; Groq is a free-plan option with an open-weight model |
 | Speech-to-text, hosted | **OpenAI `gpt-transcribe`** | Accepts several expected languages and keyword hints; replaces `whisper-1`, which OpenAI retires in February 2027 |
 | Speech-to-text, local | **Hugging Face Transformers**, Whisper fine-tune, PyAV | Runs a Tunisian model on your own GPU; PyAV decodes audio without a separate FFmpeg install |
 | Task tracker | **Notion API** (data sources) | Where the team already tracks work |
@@ -155,7 +155,8 @@ and the page shows what is switched on.
 
 | Variable | Enables | Where to get it |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | Action-item extraction (**the only one needed to start**) | [platform.claude.com](https://platform.claude.com) |
+| `ANTHROPIC_API_KEY` | Action-item extraction with Claude (**the only one needed to start**) | [platform.claude.com](https://platform.claude.com) |
+| `LLM_PROVIDER=groq` + `GROQ_API_KEY` | Extraction with an open model on Groq instead, see [free setup](#-setup-guides) | [console.groq.com](https://console.groq.com) |
 | `OPENAI_API_KEY` | Uploading recordings (speech-to-text) | [platform.openai.com](https://platform.openai.com) |
 | `NOTION_TOKEN` | Writing tasks to Notion | Your Notion integration's secret |
 | `NOTION_DATABASE_ID` | Which database to write to | The database's URL, pasted as is |
@@ -292,6 +293,27 @@ seconds. Check a model's license on its card before using it commercially.
 </details>
 
 <details>
+<summary><b>Run it for free (open models only)</b></summary>
+
+Speech-to-text can run on your own GPU (see above) and the LLM step can use Groq's free
+plan, so no bill is involved:
+
+```ini
+STT_PROVIDER=local
+LLM_PROVIDER=groq
+GROQ_API_KEY=gsk_...
+GROQ_MODEL=openai/gpt-oss-120b
+```
+
+`openai/gpt-oss-120b` is an open-weight model and, on Groq, one of the few that enforces a
+strict JSON schema. Groq's Llama 3 models are being retired and no Llama there supports
+schemas. Be aware of the free plan's limits: Groq's documentation lists about 8,000 tokens
+per minute for this model, which fits a short meeting, not an hour-long one. Longer
+transcripts need a paid Groq plan or Claude. Plans and limits change, so check
+[console.groq.com/settings/limits](https://console.groq.com/settings/limits).
+</details>
+
+<details>
 <summary><b>Connect Zoom</b></summary>
 
 Zoom sends the `recording.transcript_completed` event for accounts with cloud recording and
@@ -369,6 +391,7 @@ meeting-to-action/
 │   │   ├── audio.py               # safe handling of uploaded recordings
 │   │   ├── extraction.py          # prompts (incl. Derja guidance), LLM interface, quote check
 │   │   ├── anthropic_extractor.py # the Claude call
+│   │   ├── groq_extractor.py      # the same job with an open model on Groq
 │   │   ├── notion.py              # column check, page mapping, retries
 │   │   ├── zoom.py                # signature check, transcript download
 │   │   ├── job_store.py           # job records, behind an interface

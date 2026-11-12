@@ -1,0 +1,25 @@
+# Render Blueprint (https://render.com/docs/blueprint-spec).
+# In the Render dashboard: New > Blueprint, pick this repository, fill in the secrets.
+services:
+  - type: web
+    name: meeting-to-action
+    runtime: python  # the Python version comes from .python-version
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # One process only: jobs are kept in memory, so they are not shared between workers.
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: API_KEY
+        generateValue: true  # Render invents a random key; read it on the Environment page
+      # "sync: false" means the value is typed into the dashboard, never stored in git.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: NOTION_TOKEN
+        sync: false
+      - key: NOTION_DATABASE_ID
+        sync: false
+      - key: ZOOM_WEBHOOK_SECRET_TOKEN
+        sync: false

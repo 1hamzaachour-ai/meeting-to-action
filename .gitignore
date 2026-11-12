@@ -1,0 +1,56 @@
+# --- Secrets and local configuration ---
+.env
+.env.*
+!.env.example
+
+# --- Audio: meeting recordings are private, and large ---
+# Nothing audio is ever committed by accident. Deliberate samples go in sample_data/.
+*.mp3
+*.m4a
+*.wav
+*.ogg
+*.opus
+*.flac
+*.webm
+*.aac
+!sample_data/**
+meeting-audio-*
+
+# --- Speech models and caches (gigabytes) ---
+models/
+hf-cache/
+.cache/
+*.safetensors
+*.bin
+*.pt
+*.onnx
+
+# --- Python ---
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# --- Tests, linters, type checkers ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# --- Logs and scratch files ---
+*.log
+tmp/
+
+# --- Editors and operating systems ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini

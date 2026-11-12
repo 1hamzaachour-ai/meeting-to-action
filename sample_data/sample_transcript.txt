@@ -1,0 +1,29 @@
+Meeting: Weekly Product Sync
+Date: Monday 2026-11-09
+Attendees: Sarah Chen (Product), Omar Haddad (Backend), Lina Ferrari (Design), Karim Benali (Data)
+
+[00:00] Sarah Chen: Morning everyone. Three topics today: the onboarding redesign, the billing bug, and the Q4 dashboard. Lina, where are we on onboarding?
+
+[00:42] Lina Ferrari: The new flow is designed, five screens instead of eight. I still need to finish the empty states. I'll have the final mockups in Figma by Wednesday.
+
+[01:15] Sarah Chen: Great. Omar, can your team start building once the mockups are in?
+
+[01:22] Omar Haddad: Yes, but first I have to fix the billing bug. Customers on annual plans are charged twice when they upgrade. It's the top priority, I'll ship a fix by end of day tomorrow.
+
+[02:03] Sarah Chen: Agreed, that one can't wait. Karim, can you pull the list of affected accounts so support can refund them?
+
+[02:15] Karim Benali: Sure. I'll run the query this afternoon and send the list to support by Thursday at the latest.
+
+[02:40] Sarah Chen: Perfect. On the dashboard: last week we decided to drop the weekly email report and keep only the live dashboard. Is everyone still fine with that?
+
+[02:55] Lina Ferrari: Fine with me.
+
+[02:58] Karim Benali: Yes. I do need the tracking events documented though, otherwise the retention chart will be wrong. Someone should write that spec.
+
+[03:20] Sarah Chen: Good point. Nobody owns that yet, so let's put it on the list and assign it next week.
+
+[03:34] Omar Haddad: One more thing, the staging database is almost full. I'll ask DevOps to increase the storage. Low priority, sometime this month.
+
+[03:50] Sarah Chen: Noted. I'll write up the Q4 roadmap and share it with the whole team before our next sync on November 16.
+
+[04:10] Sarah Chen: Anything else? No? Thanks everyone.

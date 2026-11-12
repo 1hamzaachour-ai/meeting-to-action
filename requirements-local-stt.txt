@@ -1,0 +1,12 @@
+# Optional: only for STT_PROVIDER=local, which runs a Hugging Face Whisper model on
+# this machine instead of calling a hosted speech-to-text API.
+#
+# 1. Install PyTorch, choosing the build for your hardware:
+#      NVIDIA GPU:  pip install torch --index-url https://download.pytorch.org/whl/cu126
+#      CPU only:    pip install torch --index-url https://download.pytorch.org/whl/cpu
+# 2. Then:          pip install -r requirements-local-stt.txt
+#
+# The versions below were run with the CPU build of torch 2.15.0.
+transformers==5.22.2          # loads and runs the Whisper model
+av==19.0.2                    # decodes .mp3 / .m4a (bundles FFmpeg, nothing else to install)
+numpy==2.5.4

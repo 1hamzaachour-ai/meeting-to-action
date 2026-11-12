@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meeting-to-Action</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232563eb'/%3E%3Cpath d='M9 16.5l5 5 9-10' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: light dark;
+      --accent: #2563eb;
+      --border: #8885;
+      --surface: light-dark(#f6f7f9, #1c1d20);
+      --muted: light-dark(#5f6368, #9aa0a6);
+      --error: light-dark(#b91c1c, #f87171);
+      --high: light-dark(#b91c1c, #f87171);
+      --medium: light-dark(#92400e, #fbbf24);
+      --low: light-dark(#166534, #4ade80);
+    }
+    * { box-sizing: border-box; }
+    /* Without this, "display: grid" on labels would win over the hidden attribute. */
+    [hidden] { display: none !important; }
+    body { font: 16px/1.5 system-ui, sans-serif; max-width: 46rem; margin: 3rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.6rem; margin-bottom: .25rem; }
+    h2 { font-size: 1.25rem; margin: 0 0 .5rem; }
+    .lead, .meta { color: var(--muted); }
+    .lead { margin-top: 0; }
+    .meta { font-size: .9rem; margin: .25rem 0; }
+    .warn { color: var(--error); }
+    form, #result { padding: 1.25rem; border: 1px solid var(--border); border-radius: .75rem; }
+    form { display: grid; gap: 1rem; }
+    .row { display: grid; gap: 1rem; grid-template-columns: 2fr 1fr; }
+    label { display: grid; gap: .35rem; font-weight: 600; }
+    label small { font-weight: 400; color: var(--muted); }
+    input, select { font: inherit; font-weight: 400; width: 100%; padding: .5rem; border: 1px solid var(--border); border-radius: .5rem; }
+    button { font: inherit; font-weight: 600; padding: .6rem 1rem; border: 0; border-radius: .5rem; background: var(--accent); color: #fff; cursor: pointer; }
+    button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: .3rem .7rem; margin-left: .5rem; }
+    button:disabled { opacity: .6; cursor: progress; }
+    #status { min-height: 1.5rem; font-weight: 600; }
+    #status.error { color: var(--error); }
+    .items { list-style: none; padding: 0; margin: 1rem 0; display: grid; gap: .75rem; }
+    .item { padding: .9rem 1rem; background: var(--surface); border-radius: .6rem; }
+    .item p { margin: .3rem 0; }
+    .item-head { display: flex; gap: .6rem; align-items: baseline; }
+    .badge { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+    .badge.high { color: var(--high); }
+    .badge.medium { color: var(--medium); }
+    .badge.low { color: var(--low); }
+    /* "inline-start" is the left edge for French and the right edge for Arabic. */
+    blockquote { margin: .5rem 0; padding-inline-start: .75rem; border-inline-start: 3px solid var(--border); color: var(--muted); font-style: italic; }
+    pre { margin: .5rem 0 0; padding: .75rem; background: var(--surface); border-radius: .5rem; white-space: pre-wrap; word-break: break-word; font-size: .85rem; }
+    pre.transcript { font: inherit; line-height: 1.8; }
+    footer { margin-top: 2rem; color: var(--muted); font-size: .9rem; }
+    @media (max-width: 34rem) { .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>Meeting-to-Action</h1>
+  <p class="lead">Upload a meeting transcript or recording. An LLM extracts the action items and they are added to a Notion database.</p>
+  <p id="setup" class="meta"></p>
+
+  <form id="upload-form">
+    <label>
+      <span>Transcript or recording <small>(.txt, .vtt, .mp3, .m4a)</small></span>
+      <input type="file" name="file" accept=".txt,.vtt,.mp3,.m4a,text/plain,text/vtt,audio/mpeg,audio/mp4" required>
+    </label>
+    <div class="row">
+      <label>
+        <span>Meeting title <small>(optional)</small></span>
+        <input type="text" name="meeting_title" maxlength="200" placeholder="Weekly product sync">
+      </label>
+      <label>
+        <span>Meeting date <small>(optional)</small></span>
+        <input type="date" name="meeting_date">
+      </label>
+    </div>
+    <div class="row">
+      <label>
+        <span>Participants <small>(optional, separated by commas)</small></span>
+        <input type="text" name="participants" maxlength="1000" placeholder="Amira Ben Salah, Youssef Trabelsi">
+      </label>
+      <label>
+        <span>Spoken language <small>(recordings)</small></span>
+        <select name="spoken_language" id="spoken-language">
+          <option value="derja">Derja + French / English</option>
+          <option value="fr">French</option>
+          <option value="en">English</option>
+          <option value="ar">Arabic</option>
+          <option value="auto">Detect</option>
+        </select>
+      </label>
+    </div>
+    <label id="api-key-field" hidden>
+      <span>API key <small>(this server requires one)</small></span>
+      <input type="password" id="api-key" autocomplete="off">
+    </label>
+    <button type="submit">Extract action items</button>
+  </form>
+
+  <p id="status" role="status" aria-live="polite"></p>
+  <section id="result" hidden></section>
+
+  <footer>API reference: <a href="/docs">/docs</a></footer>
+
+  <script>
+    const POLL_INTERVAL_MS = 1000;
+    const POLL_TIMEOUT_MS = 15 * 60 * 1000;
+
+    const form = document.getElementById("upload-form");
+    const submitButton = form.querySelector("button");
+    const statusEl = document.getElementById("status");
+    const resultEl = document.getElementById("result");
+    const apiKeyInput = document.getElementById("api-key");
+
+    // Every piece of text goes in through textContent, never innerHTML, so
+    // nothing coming from a transcript can run as markup.
+    function el(tag, className, text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text != null) {
+        node.textContent = text;
+        node.dir = "auto";  // Arabic text reads right to left, French left to right
+      }
+      return node;
+    }
+
+    function setStatus(text, isError = false) {
+      statusEl.replaceChildren(text);
+      statusEl.classList.toggle("error", isError);
+    }
+
+    function authHeaders() {
+      return apiKeyInput.value ? { "X-API-Key": apiKeyInput.value } : {};
+    }
+
+    async function readJson(response) {
+      try { return await response.json(); } catch { return null; }
+    }
+
+    // A FastAPI error carries a `detail`: a string, or a list of validation issues.
+    function errorText(payload, fallback) {
+      const detail = payload && payload.detail;
+      if (typeof detail === "string") return detail;
+      if (Array.isArray(detail)) return detail.map((issue) => issue.msg).join("; ");
+      return fallback;
+    }
+
+    async function showSetup() {
+      const health = await readJson(await fetch("/health"));
+      if (!health) return;
+      document.getElementById("api-key-field").hidden = !health.auth_required;
+      apiKeyInput.required = health.auth_required;
+      const onOff = (enabled) => (enabled ? "on" : "off");
+      const { llm, speech_to_text, notion, zoom_webhook } = health.integrations;
+      const setup = document.getElementById("setup");
+      setup.textContent = `LLM: ${onOff(llm)} · Speech-to-text: ${onOff(speech_to_text)} · Notion: ${onOff(notion)} · Zoom webhook: ${onOff(zoom_webhook)}`;
+      if (!llm) setup.append(el("span", "warn", " — uploads are disabled until ANTHROPIC_API_KEY is set."));
+    }
+
+    async function pollJob(statusUrl) {
+      const deadline = Date.now() + POLL_TIMEOUT_MS;
+      while (Date.now() < deadline) {
+        const response = await fetch(statusUrl, { headers: authHeaders() });
+        const job = await readJson(response);
+        if (!response.ok) throw new Error(errorText(job, `Status check failed (HTTP ${response.status}).`));
+        if (job.status === "completed" || job.status === "failed") return job;
+        const progress = {
+          "transcribing": "Transcribing the recording...",
+          "extracting": "Extracting the action items...",
+          "writing to Notion": "Writing the tasks to Notion...",
+        };
+        setStatus(job.status === "queued" ? "Waiting for a free slot..." : progress[job.stage] || "Working...");
+        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      }
+      throw new Error("Timed out waiting for the job to finish.");
+    }
+
+    function notionSummary(notion) {
+      if (notion.status === "created") return `${notion.tasks.length} task(s) created in Notion.`;
+      return notion.detail || `Notion: ${notion.status}.`;
+    }
+
+    function renderItem(item, task) {
+      const node = el("li", "item");
+      const head = el("div", "item-head");
+      head.append(el("span", `badge ${item.priority}`, item.priority), el("strong", null, item.title));
+      node.append(head, el("p", null, item.description));
+      node.append(el("p", "meta", `${item.owner ? `Owner: ${item.owner}` : "No owner"} · ${item.due_date ? `Due: ${item.due_date}` : "No due date"}`));
+      node.append(el("blockquote", null, item.source_quote));
+      if (!item.quote_verified) {
+        node.append(el("p", "meta warn", "This quote was not found word for word in the transcript: review this item."));
+      }
+      if (task && task.url && task.url.startsWith("https://")) {
+        const link = el("a", null, "Open in Notion");
+        link.href = task.url;
+        link.target = "_blank";
+        link.rel = "noopener";
+        node.append(link);
+      } else if (task && task.error) {
+        node.append(el("p", "meta warn", `Not created in Notion: ${task.error}`));
+      }
+      return node;
+    }
+
+    function renderJob(job) {
+      resultEl.replaceChildren();
+      const result = job.result;
+      resultEl.hidden = !result;
+      if (!result) return;
+
+      resultEl.append(el("h2", null, result.meeting_title), el("p", null, result.summary));
+      const items = el("ol", "items");
+      result.action_items.forEach((item, index) => items.append(renderItem(item, result.notion.tasks[index])));
+      resultEl.append(result.action_items.length ? items : el("p", "meta", "No action items were found in this transcript."));
+      resultEl.append(el("p", "meta", `${result.llm.model} · ${result.llm.input_tokens} input tokens · ${result.llm.output_tokens} output tokens`));
+
+      if (result.transcription) {
+        // The machine-made transcript is shown so its quality can be judged at a glance.
+        const transcript = el("details");
+        transcript.append(
+          el("summary", "meta", `Transcript of the recording (${result.transcription.engine})`),
+          el("pre", "transcript", result.transcription.text),
+        );
+        resultEl.append(transcript);
+      }
+
+      const raw = el("details");
+      raw.append(el("summary", "meta", "Raw job data"), el("pre", null, JSON.stringify(job, null, 2)));
+      resultEl.append(raw);
+    }
+
+    async function submit(force) {
+      submitButton.disabled = true;
+      resultEl.hidden = true;
+      setStatus("Uploading...");
+      try {
+        const body = new FormData(form);
+        if (force) body.append("force", "true");
+        const response = await fetch("/api/v1/transcripts", { method: "POST", body, headers: authHeaders() });
+        const accepted = await readJson(response);
+        if (!response.ok) throw new Error(errorText(accepted, `Upload failed (HTTP ${response.status}).`));
+
+        const job = await pollJob(accepted.status_url);
+        renderJob(job);
+        if (job.status === "failed") {
+          setStatus(job.error, true);
+        } else if (accepted.duplicate) {
+          setStatus("This file was already processed. Showing the earlier result. ");
+          const again = el("button", "secondary", "Process it again");
+          again.type = "button";
+          again.addEventListener("click", () => submit(true));
+          statusEl.append(again);
+        } else {
+          setStatus(`Done: ${job.result.action_items.length} action item(s). ${notionSummary(job.result.notion)}`);
+        }
+      } catch (error) {
+        // fetch() itself rejects with a TypeError when the server cannot be reached.
+        setStatus(error instanceof TypeError ? "Could not reach the server." : error.message, true);
+      } finally {
+        submitButton.disabled = false;
+      }
+    }
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      submit(false);
+    });
+    showSetup().catch(() => {});
+  </script>
+</body>
+</html>
